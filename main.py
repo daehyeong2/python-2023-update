@@ -1,53 +1,52 @@
 import requests
 from bs4 import BeautifulSoup
 
-url = "https://weworkremotely.com/remote-full-time-jobs"
+class Scrapper:
+    def __init__(self):
+        self.all_jobs = []
+    def scrape_data(self, url):
+        response = requests.get(url, headers={"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36"})
+        soup = BeautifulSoup(response.content, "html.parser")
+        headers = soup.find_all("a", {"class": "preventLink"})[1::2]
+        for header in headers:
+            expired = bool(header.findNext("div", {"class": "description"}).find("strong", recursive=False))
+            if expired:
+                pass
+            title = header.find("h2").text.replace("\t", "").replace("\n", "")
+            company = header.findNext("h3", {"itemprop": "name"}).text.replace("\t", "").replace("\n", "")
+            location = header.findNext("div", {"class": "location"}).text
+            salary = header.findNext("div", string=lambda x: x and "💰" in x).text.replace("*", "")
+            url = "https://remoteok.com" + header["href"]
+            if header["href"] == "/remote-jobs/":
+                break
+            job_data = {
+                title: title,
+                company: company,
+                location: location,
+                salary: salary,
+                url: url
+            }
+            self.all_jobs.append(job_data)
+    def scrape(self, keyword, data_range):
+        if data_range > 50: raise Exception("data_range는 50 이하의 숫자만 넣어야 합니다.")
+        if isinstance(keyword, list) and len(keyword) > 1:
+            print(f"약 {data_range*20*len(keyword)}개의 일자리를 검색하겠습니다. (일자리가 {data_range*20*len(keyword)}개만큼 없어도 최대한 검색합니다.)")
+            for search_keyword in keyword:
+                for offset in range(data_range):
+                    print(f"{search_keyword}: {offset+1}페이지 요청 중.. ({offset+1}/{data_range})")
+                    self.scrape_data(f"https://remoteok.com/?tags={search_keyword}&action=get_jobs&offset={offset*20}")
+        else:
+            print(f"약 {data_range*20}개의 일자리를 검색하겠습니다. (일자리가 {data_range*20}개만큼 없어도 최대한 검색합니다.)")
+            if isinstance(keyword, list): search_keyword = keyword[0]
+            else: search_keyword = keyword
+            for offset in range(data_range):
+                print(f"{search_keyword}: {offset+1}페이지 요청 중.. ({offset+1}/{data_range})")
+                self.scrape_data(f"https://remoteok.com/?tags={search_keyword}&action=get_jobs&offset={offset*20}")
+        print(f"{len(scrapper.all_jobs)}개의 일자리를 찾았습니다.")
 
-all_jobs = []
+scrapper = Scrapper()
 
-def get_pages(url):
-    response = requests.get(f"{url}?page=1")
-    soup = BeautifulSoup(response.content, "html.parser")
-    last = soup.find("span", {"class": "last"})
-    if last:
-        return int(last.find("a")["href"].split("?page=")[1])
-    else:
-        return False
-
-def scrape_page(url):
-    response = requests.get(url)
-
-    soup = BeautifulSoup(response.content, "html.parser")
-
-    jobs = soup.find("section", {"class": "jobs"}).find_all("li")[1:-1]
-
-
-    for job in jobs:
-        title = job.find("span", {"class": "title"}).text
-        company, position, region = job.find_all("span", {"class": "company"})
-        url = job.find("div", {"class": "tooltip--flag-logo"}).next_sibling["href"]
-        job_data = {
-            "title": title,
-            "company": company.text,
-            "position": position.text,
-            "region": region.text,
-            "url": "https://weworkremotely.com" + url
-        }
-        all_jobs.append(job_data)
-
-total_pages = get_pages(url)
-
-if total_pages:
-    if(total_pages>=2):
-        total_pages = int(input(f"{total_pages}개의 페이지를 찾았습니다. 몇 페이지까지 추출 하시겠습니까?: "))
-    else:
-        print(f"{total_pages}개의 페이지를 찾았습니다.")
-    for page in range(1, total_pages+1):
-        print(f"{page}페이지 요청 중.. ({page}/{total_pages})")
-        scrape_page(f"{url}?page={page}")
-    print(f"총 {len(all_jobs)}개의 일자리를 찾았습니다.")
-else:
-    print("1개의 페이지가 있습니다.")
-    print("1페이지 요청 중... (1/1)")
-    scrape_page(url)
-    print(f"총 {len(all_jobs)}개의 일자리를 찾았습니다.")
+scrapper.scrape(
+    keyword=["python", "flutter"],
+    data_range=3
+)
