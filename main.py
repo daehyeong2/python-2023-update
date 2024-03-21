@@ -11,7 +11,7 @@ class Scrapper:
         for header in headers:
             expired = bool(header.findNext("div", {"class": "description"}).find("strong", recursive=False))
             if expired:
-                pass
+                break
             title = header.find("h2").text.replace("\t", "").replace("\n", "")
             company = header.findNext("h3", {"itemprop": "name"}).text.replace("\t", "").replace("\n", "")
             location = header.findNext("div", {"class": "location"}).text
@@ -47,6 +47,8 @@ class Scrapper:
 scrapper = Scrapper()
 
 scrapper.scrape(
-    keyword=["python", "flutter"],
-    data_range=3
+    keyword=["python"],
+    data_range=1
 )
+
+print(scrapper.all_jobs)
