@@ -7,56 +7,47 @@ p = sync_playwright().start()
 
 browser = p.chromium.launch(headless=False)
 
-page = browser.new_page()
+def scrape_page(keyword, scroll_count=3):
+    for search_keyword in keyword:
+        page = browser.new_page()
+        page.goto(f"https://www.wanted.co.kr/search?query={search_keyword}&tab=position")
 
-page.goto("https://www.wanted.co.kr/search?query=flutter&tab=position")
+        for i in range(scroll_count):
+            page.keyboard.down("End")
+            time.sleep(0.5)
 
-# time.sleep(1)
+        content = page.content()
 
-# page.click("button.Aside_searchButton__Xhqq3")
+        page.close()
 
-# time.sleep(1)
+        soup = BeautifulSoup(content, "html.parser")
 
-# page.get_by_placeholder("검색어를 입력해 주세요.").fill("flutter")
+        jobs = soup.find_all("div", {"class": "JobCard_container__FqChn"})
 
-# time.sleep(1)
+        jobs_db = []
 
-# page.keyboard.down("Enter")
+        for job in jobs:
+            link = f"https://wanted.co.kr{job.find('a')['href']}"
+            title = job.find("strong", {"class": "JobCard_title__ddkwM"}).text
+            company_name = job.find("span", {"class": "JobCard_companyName__vZMqJ"}).text
+            reward = job.find("span", {"class": "JobCard_reward__sdyHn"}).text
+            job = {
+                "title": title,
+                "company_name": company_name,
+                "reward": reward,
+                "link": link
+            }
+            jobs_db.append(job)
 
-# time.sleep(1)
+        file = open(f"{search_keyword}.csv", "w")
+        writer = csv.writer(file)
+        writer.writerow(["Title", "Company", "Reward", "Link"])
 
-# page.click("a#search_tab_position")
+        for job in jobs_db:
+            writer.writerow(job.values())
 
-for i in range(4):
-    page.keyboard.down("End")
-    time.sleep(0.5)
+        file.close()
 
-content = page.content()
+scrape_page(["python", "react"], 5)
 
 p.stop()
-
-soup = BeautifulSoup(content, "html.parser")
-
-jobs = soup.find_all("div", {"class": "JobCard_container__FqChn"})
-
-jobs_db = []
-
-for job in jobs:
-    link = f"https://wanted.co.kr{job.find('a')['href']}"
-    title = job.find("strong", {"class": "JobCard_title__ddkwM"}).text
-    company_name = job.find("span", {"class": "JobCard_companyName__vZMqJ"}).text
-    reward = job.find("span", {"class": "JobCard_reward__sdyHn"}).text
-    job = {
-        "title": title,
-        "company_name": company_name,
-        "reward": reward,
-        "link": link
-    }
-    jobs_db.append(job)
-
-file = open("file.csv", "w")
-writer = csv.writer(file)
-writer.writerow(["Title", "Company", "Reward", "Link"])
-
-for job in jobs_db:
-    writer.writerow(job.values())
